@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time Align — Car Audio Delay Calculator</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0b1118;
+    --panel: #111a24;
+    --panel-2: #16222e;
+    --border: #223142;
+    --text: #e6edf3;
+    --muted: #93a4b5;
+    --accent: #4cc9f0;
+    --accent-2: #f72585;
+    --warn: #f9c74f;
+    --err: #ff6b6b;
+    --ok: #90be6d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(1200px 600px at 20% -10%, #132434 0%, var(--bg) 60%);
+    color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 48px; }
+  header { padding: 30px 0 8px; }
+  h1 { margin: 0 0 8px; font-size: clamp(24px, 3vw, 36px); letter-spacing: -0.02em; }
+  h1 span { color: var(--accent); }
+  .subtitle { margin: 0; max-width: 960px; color: var(--muted); }
+  .panel {
+    margin: 16px 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012));
+  }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .section-head h2 { margin: 0; font-size: 16px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  .dropzone {
+    padding: 34px 20px;
+    border: 1.5px dashed #2c4258;
+    border-radius: 14px;
+    background: rgba(76,201,240,0.03);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag { border-color: var(--accent); background: rgba(76,201,240,0.09); }
+  .dropzone.busy { opacity: .55; pointer-events: none; }
+  .dropzone strong { display: block; margin-bottom: 4px; font-size: 16px; }
+  .dropzone small { color: var(--muted); }
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-top: 14px;
+  }
+  @media (max-width: 900px) {
+    .controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 560px) {
+    .controls { grid-template-columns: 1fr; }
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field > label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  select, input[type="range"], input[type="number"] {
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font: inherit;
+    outline: none;
+  }
+  input[type="number"]:disabled { opacity: .5; }
+  select:focus { border-color: var(--accent); }
+  input[type="range"] { padding: 0; accent-color: var(--accent); background: transparent; border: 0; }
+  .range-value { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    padding: 9px 13px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+    transition: transform .1s ease, border-color .1s ease, background .1s ease;
+  }
+  button:hover:not(:disabled) { transform: translateY(-1px); border-color: #365069; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: transparent; color: #04121a; font-weight: 600; }
+  button.ghost { background: rgba(255,255,255,0.02); }
+  .status { min-height: 20px; margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+  .system-controls {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) 2fr;
+    gap: 12px;
+    align-items: end;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+  .system-hint { align-self: center; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  @media (max-width: 900px) {
+    .system-controls { grid-template-columns: 1fr 1fr; }
+    .system-hint { grid-column: 1 / -1; }
+  }
+  .sub-controls {
+    display: grid;
+    grid-template-columns: auto minmax(180px, 1fr) minmax(180px, 1fr) minmax(180px, 1.2fr);
+    gap: 12px;
+    align-items: end;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+  .sub-title { align-self: center; color: var(--accent-2); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  .sub-title .small { color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .sub-detected { align-self: center; color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .sub-detected.found { color: var(--accent); }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .toolbar .status { flex: 1 1 240px; margin: 0; }
+  @media (max-width: 900px) {
+    .sub-controls { grid-template-columns: 1fr 1fr; }
+    .sub-title, .sub-detected { grid-column: 1 / -1; }
+  }
+
+  #notices { margin: 12px 0 0; }
+  .notice {
+    margin: 8px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-2);
+    font-size: 13px;
+  }
+  .notice.warn { border-color: rgba(249,199,79,0.4); background: rgba(249,199,79,0.08); color: #ffe6a3; }
+  .notice.err { border-color: rgba(255,107,107,0.4); background: rgba(255,107,107,0.08); color: #ffc4c4; }
+  .notice.info { border-color: rgba(76,201,240,0.35); background: rgba(76,201,240,0.07); color: #c9f0fd; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); text-align: right; white-space: nowrap; }
+  th { position: sticky; top: 0; z-index: 1; background: #0e1721; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; min-width: 190px; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover { background: rgba(76,201,240,0.035); }
+  tr.ref td { background: rgba(76,201,240,0.07); }
+  tr.zero td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+  tr.error-row td { background: rgba(255,107,107,0.05); }
+  .file-cell { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .file-content { min-width: 0; }
+  .file-main { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+  .file-name { font-weight: 600; word-break: break-word; }
+  .file-meta { margin-top: 2px; color: var(--muted); font-size: 11px; }
+  .ref-badge, .zero-badge, .sub-badge {
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: .04em;
+  }
+  .ref-badge { background: rgba(76,201,240,0.16); color: var(--accent); }
+  .zero-badge { background: rgba(144,190,109,0.16); color: var(--ok); }
+  .sub-badge { background: rgba(247,37,133,0.16); color: var(--accent-2); }
+  button.remove {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    line-height: 1;
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 17px;
+  }
+  button.remove:hover { color: var(--err); border-color: rgba(255,107,107,0.45); }
+  .pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; }
+  .pill.same { color: var(--ok); border-color: rgba(144,190,109,0.4); }
+  .pill.inv { color: var(--err); border-color: rgba(255,107,107,0.4); }
+  .pill.unc { color: var(--warn); border-color: rgba(249,199,79,0.4); }
+  .pill.ref { color: var(--accent); border-color: rgba(76,201,240,0.4); }
+  .file-warning { margin-top: 4px; max-width: 340px; color: var(--warn); font-size: 11px; line-height: 1.35; }
+  .file-warning.error { color: var(--err); }
+  .charts { display: grid; grid-template-columns: 1.35fr 1fr; gap: 16px; margin: 16px 0; }
+  @media (max-width: 960px) { .charts { grid-template-columns: 1fr; } }
+  .chart-card { padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); }
+  .chart-card h3 { margin: 0 0 8px; font-size: 14px; }
+  .chart-card canvas { display: block; width: 100%; border-radius: 8px; }
+  #chart-ir { height: 260px; }
+  #chart-timeline { height: 240px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; }
+  .legend-item span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  footer { color: var(--muted); font-size: 12px; padding: 8px 0 0; }
+  footer p { max-width: 1000px; }
+  .test-output { margin-top: 10px; padding: 12px; max-height: 280px; overflow: auto; border: 1px solid var(--border); border-radius: 10px; background: #0a121a; font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  .test-output .pass { color: var(--ok); }
+  .test-output .fail { color: var(--err); }
+  #toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 20;
+    max-width: min(420px, 90vw);
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #1b2a3a;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+  #toast.err { border-color: rgba(255,107,107,0.55); color: #ffc4c4; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Time Align <span>— Car Audio Delay</span></h1>
+    <p class="subtitle">Kéo thả impulse response <strong>.wav</strong> xuất từ HouseCurve. Tool tự tìm onset/peak, tính delay tương đối và xuất thông số cần nhập vào DSP (ms, cm, samples).</p>
+  </header>
+
+  <section class="panel">
+    <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Chọn file WAV">
+      <strong>Kéo thả file .wav (impulse response) vào đây</strong>
+      <small>hoặc bấm để chọn · hỗ trợ nhiều file · dữ liệu xử lý hoàn toàn trên máy</small>
+    </div>
+    <input id="file-input" type="file" accept=".wav,audio/wav,audio/x-wav" multiple hidden>
+
+    <div class="controls">
+      <div class="field">
+        <label for="reference">Reference</label>
+        <select id="reference" disabled></select>
+      </div>
+      <div class="field">
+        <label for="method">Phương pháp</label>
+        <select id="method">
+          <option value="onset">Onset (khuyến nghị)</option>
+          <option value="peak">Peak</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="threshold">Ngưỡng onset (main) <span id="threshold-value" class="range-value">-20 dB</span></label>
+        <input id="threshold" type="range" min="-30" max="-10" step="1" value="-20">
+      </div>
+      <div class="field">
+        <label for="smoothing">Làm mượt (main) <span id="smoothing-value" class="range-value">0.5 ms</span></label>
+        <input id="smoothing" type="range" min="0.5" max="5" step="0.5" value="0.5">
+      </div>
+      <div class="field">
+        <label for="rounding">Làm tròn DSP</label>
+        <select id="rounding">
+          <option value="none">Không làm tròn</option>
+          <option value="ms001">0.01 ms</option>
+          <option value="ms002">0.02 ms</option>
+          <option value="ms01">0.1 ms</option>
+          <option value="cm">1 cm</option>
+          <option value="sample">1 sample</option>
+        </select>
+      </div>
+    </div>
+    <div class="system-controls">
+      <div class="field">
+        <label for="system-mode">Hệ thống</label>
+        <select id="system-mode">
+          <option value="active">Active / full-range</option>
+          <option value="passive2" selected>2-way passive</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="crossover-freq">Crossover bass/treble (Hz)</label>
+        <input id="crossover-freq" type="number" min="200" max="10000" step="50" value="5000" title="Tần số crossover bass/treble; band-pass zero-phase Fc/√2–Fc×√2 trước khi tìm onset">
+      </div>
+      <div id="system-hint" class="system-hint">2-way passive: band-pass speaker zero-phase quanh crossover (Fc/√2–Fc×√2) trước khi tìm onset; sub không bị lọc.</div>
+    </div>
+    <div class="sub-controls">
+      <div class="sub-title">SUB <span class="small">tự động theo tên file</span></div>
+      <div class="field">
+        <label for="sub-threshold">Ngưỡng onset sub <span id="sub-threshold-value" class="range-value">-22 dB</span></label>
+        <input id="sub-threshold" type="range" min="-30" max="-10" step="1" value="-22">
+      </div>
+      <div class="field">
+        <label for="sub-smoothing">Làm mượt sub <span id="sub-smoothing-value" class="range-value">1.0 ms</span></label>
+        <input id="sub-smoothing" type="range" min="0.5" max="5" step="0.5" value="1.0">
+      </div>
+      <div id="sub-detected" class="sub-detected">Chưa nhận diện sub</div>
+    </div>
+    <div class="toolbar">
+      <div id="status" class="status" aria-live="polite"></div>
+      <div class="actions">
+        <button id="clear" class="ghost" disabled>Xóa tất cả</button>
+        <button id="copy" class="ghost" disabled>Copy TSV</button>
+        <button id="export" class="primary" disabled>Export CSV</button>
+      </div>
+    </div>
+    <div id="notices" aria-live="polite"></div>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <h2>Kết quả</h2>
+      <span id="summary" class="muted small">Chưa có dữ liệu</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Onset (ms)</th>
+            <th>Peak (ms)</th>
+            <th>Delay vs ref (ms)</th>
+            <th>DSP delay (ms)</th>
+            <th>DSP delay (cm)</th>
+            <th>DSP delay (samples)</th>
+            <th>Polarity</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="charts">
+    <div class="chart-card">
+      <h3 id="chart-ir-title">Impulse response (aligned theo onset)</h3>
+      <canvas id="chart-ir"></canvas>
+      <div id="legend-ir" class="legend"></div>
+    </div>
+    <div class="chart-card">
+      <h3 id="chart-timeline-title">Thời gian đến tương đối &amp; delay cần thêm</h3>
+      <canvas id="chart-timeline"></canvas>
+      <div class="muted small">Trục thời gian thu gọn giữa loa đến sớm nhất và loa đến muộn nhất.</div>
+    </div>
+  </section>
+
+  <footer>
+    <button id="selftest" class="ghost">Chạy Self-test</button>
+    <div id="selftest-panel" hidden>
+      <div id="selftest-output" class="test-output"></div>
+    </div>
+    <p>Chỉ có ý nghĩa khi các file được đo trong cùng một phiên, cùng thiết bị và cùng vị trí nghe. Tool chỉ tính delay tương đối; latency tuyệt đối không có ý nghĩa. Tốc độ âm thanh dùng để quy đổi: 343 m/s (1 ms = 34.3 cm). Polarity chỉ là tương đối so với reference; hãy xác minh trước khi đổi dây loa.</p>
+  </footer>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const COLORS = ['#4cc9f0', '#f72585', '#f9c74f', '#90be6d', '#b5179e', '#f8961e', '#43aa8b', '#577590', '#e07a5f', '#81b29a'];
+  const SPEED_CM_PER_MS = 34.3;
+  const CHART_FONT = '11px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+  const els = {
+    dropzone: document.getElementById('dropzone'),
+    fileInput: document.getElementById('file-input'),
+    reference: document.getElementById('reference'),
+    method: document.getElementById('method'),
+    threshold: document.getElementById('threshold'),
+    thresholdValue: document.getElementById('threshold-value'),
+    smoothing: document.getElementById('smoothing'),
+    smoothingValue: document.getElementById('smoothing-value'),
+    subThreshold: document.getElementById('sub-threshold'),
+    subThresholdValue: document.getElementById('sub-threshold-value'),
+    subSmoothing: document.getElementById('sub-smoothing'),
+    subSmoothingValue: document.getElementById('sub-smoothing-value'),
+    subDetected: document.getElementById('sub-detected'),
+    systemMode: document.getElementById('system-mode'),
+    crossoverFreq: document.getElementById('crossover-freq'),
+    systemHint: document.getElementById('system-hint'),
+    rounding: document.getElementById('rounding'),
+    clear: document.getElementById('clear'),
+    copy: document.getElementById('copy'),
+    export: document.getElementById('export'),
+    status: document.getElementById('status'),
+    notices: document.getElementById('notices'),
+    summary: document.getElementById('summary'),
+    tbody: document.getElementById('tbody'),
+    chartIr: document.getElementById('chart-ir'),
+    chartTimeline: document.getElementById('chart-timeline'),
+    chartIrTitle: document.getElementById('chart-ir-title'),
+    chartTimelineTitle: document.getElementById('chart-timeline-title'),
+    legendIr: document.getElementById('legend-ir'),
+    selftest: document.getElementById('selftest'),
+    selftestPanel: document.getElementById('selftest-panel'),
+    selftestOutput: document.getElementById('selftest-output'),
+    toast: document.getElementById('toast')
+  };
+
+  const state = {
+    files: [],
+    referenceId: null,
+    referenceAuto: true,
+    method: 'onset',
+    thresholdDb: -20,
+    smoothingMs: 0.5,
+    subThresholdDb: -22,
+    subSmoothingMs: 1.0,
+    systemMode: 'passive2',
+    crossoverHz: 5000,
+    rounding: 'none',
+    busy: false
+  };
+
+  let nextId = 1;
+  let recomputeTimer = 0;
+  let toastTimer = 0;
+  let resizeTimer = 0;
+
+  function createEl(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text != null) el.textContent = text;
+    return el;
+  }
+
+  function fmt(value, digits) {
+    return Number.isFinite(value) ? value.toFixed(digits == null ? 2 : digits) : '—';
+  }
+
+  function fmtSigned(value, digits) {
+    if (!Number.isFinite(value)) return '—';
+    const d = digits == null ? 2 : digits;
+    if (Math.abs(value) < 0.5 * Math.pow(10, -d)) return (0).toFixed(d);
+    return (value > 0 ? '+' : '') + value.toFixed(d);
+  }
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function writeAscii(bytes, offset, text) {
+    for (let i = 0; i < text.length; i += 1) bytes[offset + i] = text.charCodeAt(i);
+  }
+
+  function readAscii(bytes, offset, length) {
+    let out = '';
+    for (let i = 0; i < length; i += 1) out += String.fromCharCode(bytes[offset + i]);
+    return out;
+  }
+
+  function escapeCsv(value) {
+    const s = String(value == null ? '' : value);
+    return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  function timestamp() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+
+  function methodLabel() {
+    return state.method === 'onset' ? 'Onset' : 'Peak';
+  }
+
+  function isSubwooferName(name) {
+    const base = String(name).replace(/\.[^.]+$/, '').toLowerCase();
+    if (base.includes('sub') || base.includes('lfe')) return true;
+    return /(^|[^a-z])sw([^a-z]|$)/.test(base);
+  }
+
+  function colorFor(file) {
+    const idx = state.files.findIndex((f) => f.id === file.id);
+    return COLORS[(idx >= 0 ? idx : 0) % COLORS.length];
+  }
+
+  function showToast(message, type) {
+    els.toast.textContent = message;
+    els.toast.className = 'show' + (type === 'err' ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { els.toast.className = ''; }, 3200);
+  }
+
+  function parseWav(arrayBuffer) {
+    if (arrayBuffer.byteLength < 12) throw new Error('File quá nhỏ để là WAV');
+    const bytes = new Uint8Array(arrayBuffer);
+    const view = new DataView(arrayBuffer);
+    if (readAscii(bytes, 0, 4) !== 'RIFF' || readAscii(bytes, 8, 4) !== 'WAVE') {
+      throw new Error('Không phải file RIFF/WAVE hợp lệ');
+    }
+    const warnings = [];
+    let fmtInfo = null;
+    let dataOffset = -1;
+    let dataSize = 0;
+    let offset = 12;
+    while (offset + 8 <= bytes.length) {
+      const id = readAscii(bytes, offset, 4);
+      const size = view.getUint32(offset + 4, true);
+      const body = offset + 8;
+      if (id === 'fmt ') {
+        if (size < 16 || body + 16 > bytes.length) throw new Error('fmt chunk không hợp lệ');
+        let formatCode = view.getUint16(body, true);
+        const channels = view.getUint16(body + 2, true);
+        const sampleRate = view.getUint32(body + 4, true);
+        const blockAlign = view.getUint16(body + 12, true);
+        const bitsPerSample = view.getUint16(body + 14, true);
+        if (formatCode === 0xFFFE) {
+          if (size < 40 || body + 26 > bytes.length) throw new Error('WAVE_FORMAT_EXTENSIBLE thiếu SubFormat');
+          formatCode = view.getUint16(body + 24, true);
+        }
+        fmtInfo = { formatCode, channels, sampleRate, blockAlign, bitsPerSample };
+      } else if (id === 'data' && dataOffset < 0) {
+        dataOffset = body;
+        const available = Math.max(0, bytes.length - body);
+        dataSize = Math.min(size, available);
+        if (size > available) warnings.push('Data chunk bị cắt ngắn so với header');
+      }
+      const next = body + size + (size % 2);
+      if (next <= offset) break;
+      offset = next;
+    }
+    if (!fmtInfo) throw new Error('Thiếu fmt chunk');
+    if (dataOffset < 0 || dataSize <= 0) throw new Error('Thiếu data chunk hoặc data rỗng');
+    const { formatCode, channels, sampleRate, blockAlign, bitsPerSample } = fmtInfo;
+    if (!sampleRate) throw new Error('Sample rate không hợp lệ');
+    if (!channels || channels > 32) throw new Error('Số kênh không hợp lệ');
+    const bytesPerSample = bitsPerSample / 8;
+    if (formatCode !== 1 && formatCode !== 3) throw new Error('Chỉ hỗ trợ PCM hoặc IEEE float');
+    if (formatCode === 1 && bitsPerSample !== 16 && bitsPerSample !== 24 && bitsPerSample !== 32) {
+      throw new Error('PCM ' + bitsPerSample + '-bit chưa hỗ trợ');
+    }
+    if (formatCode === 3 && bitsPerSample !== 32 && bitsPerSample !== 64) {
+      throw new Error('Float ' + bitsPerSample + '-bit chưa hỗ trợ');
+    }
+    let frameSize = blockAlign > 0 ? blockAlign : bytesPerSample * channels;
+    if (frameSize < bytesPerSample * channels) {
+      frameSize = bytesPerSample * channels;
+      warnings.push('blockAlign không hợp lệ; dùng kích thước tính toán');
+    }
+    const frameCount = Math.floor(dataSize / frameSize);
+    if (frameCount <= 0) throw new Error('Không có sample nào trong data chunk');
+    const samples = new Float32Array(frameCount);
+    let nonFinite = 0;
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      let sum = 0;
+      for (let ch = 0; ch < channels; ch += 1) {
+        const p = dataOffset + frame * frameSize + ch * bytesPerSample;
+        let v = 0;
+        if (formatCode === 1) {
+          if (bitsPerSample === 16) {
+            v = view.getInt16(p, true) / 32768;
+          } else if (bitsPerSample === 24) {
+            let q = bytes[p] | (bytes[p + 1] << 8) | (bytes[p + 2] << 16);
+            if (q & 0x800000) q -= 0x1000000;
+            v = q / 8388608;
+          } else {
+            v = view.getInt32(p, true) / 2147483648;
+          }
+        } else if (bitsPerSample === 32) {
+          v = view.getFloat32(p, true);
+        } else {
+          v = view.getFloat64(p, true);
+        }
+        if (!Number.isFinite(v)) {
+          nonFinite += 1;
+          v = 0;
+        }
+        sum += v;
+      }
+      samples[frame] = sum / channels;
+    }
+    if (nonFinite) warnings.push(nonFinite + ' sample không hợp lệ đã thay bằng 0');
+    if (channels > 1) warnings.push('Đã trung bình ' + channels + ' kênh thành mono');
+    return {
+      sampleRate,
+      channels,
+      bitsPerSample,
+      formatCode,
+      formatName: formatCode === 3 ? 'float' : 'PCM',
+      frameCount,
+      duration: frameCount / sampleRate,
+      samples,
+      warnings
+    };
+  }
+
+  function biquadZeroPhase(samples, b0, b1, b2, a1, a2) {
+    const n = samples.length;
+    const fwd = new Float32Array(n);
+    let x1 = 0;
+    let x2 = 0;
+    let y1 = 0;
+    let y2 = 0;
+    for (let i = 0; i < n; i += 1) {
+      const x = samples[i];
+      const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      fwd[i] = y;
+      x2 = x1;
+      x1 = x;
+      y2 = y1;
+      y1 = y;
+    }
+    const out = new Float32Array(n);
+    x1 = 0;
+    x2 = 0;
+    y1 = 0;
+    y2 = 0;
+    for (let i = n - 1; i >= 0; i -= 1) {
+      const x = fwd[i];
+      const y = b0 * x + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+      out[i] = y;
+      x2 = x1;
+      x1 = x;
+      y2 = y1;
+      y1 = y;
+    }
+    return out;
+  }
+
+  function highPassZeroPhase(samples, fs, fc) {
+    const w0 = 2 * Math.PI * fc / fs;
+    const cosw0 = Math.cos(w0);
+    const sinw0 = Math.sin(w0);
+    const alpha = sinw0 / (2 * Math.SQRT1_2);
+    const a0 = 1 + alpha;
+    return biquadZeroPhase(
+      samples,
+      ((1 + cosw0) / 2) / a0,
+      (-(1 + cosw0)) / a0,
+      ((1 + cosw0) / 2) / a0,
+      (-2 * cosw0) / a0,
+      (1 - alpha) / a0
+    );
+  }
+
+  function lowPassZeroPhase(samples, fs, fc) {
+    const w0 = 2 * Math.PI * fc / fs;
+    const cosw0 = Math.cos(w0);
+    const sinw0 = Math.sin(w0);
+    const alpha = sinw0 / (2 * Math.SQRT1_2);
+    const a0 = 1 + alpha;
+    return biquadZeroPhase(
+      samples,
+      ((1 - cosw0) / 2) / a0,
+      (1 - cosw0) / a0,
+      ((1 - cosw0) / 2) / a0,
+      (-2 * cosw0) / a0,
+      (1 - alpha) / a0
+    );
+  }
+
+  function bandPassZeroPhase(samples, fs, lowHz, highHz) {
+    const low = highPassZeroPhase(samples, fs, lowHz);
+    return lowPassZeroPhase(low, fs, highHz);
+  }
+
+  function analyzeSignal(samples, fs, opts) {
+    const n = samples.length;
+    if (n < 32) throw new Error('File quá ngắn để phân tích');
+    const x = new Float32Array(n);
+    let mean = 0;
+    for (let i = 0; i < n; i += 1) mean += samples[i];
+    mean /= n;
+    let maxAbs = 0;
+    for (let i = 0; i < n; i += 1) {
+      const v = samples[i] - mean;
+      x[i] = v;
+      const a = Math.abs(v);
+      if (a > maxAbs) maxAbs = a;
+    }
+    if (!(maxAbs > 1e-10)) throw new Error('Tín hiệu gần như im lặng');
+    const target = Math.max(3, Math.round(fs * opts.smoothingMs / 1000));
+    const W = target % 2 === 0 ? target + 1 : target;
+    const h = (W - 1) / 2;
+    const prefix = new Float64Array(n + 1);
+    for (let i = 0; i < n; i += 1) prefix[i + 1] = prefix[i] + x[i] * x[i];
+    const env = new Float32Array(n);
+    let envMax = 0;
+    for (let i = 0; i < n; i += 1) {
+      const a = Math.max(0, i - h);
+      const b = Math.min(n - 1, i + h);
+      const count = b - a + 1;
+      const e = Math.sqrt(Math.max(0, (prefix[b + 1] - prefix[a]) / count));
+      env[i] = e;
+      if (e > envMax) envMax = e;
+    }
+    const preN = Math.min(n, Math.max(1, Math.round(0.01 * fs)));
+    const pre = Array.from(env.subarray(0, preN));
+    pre.sort((a, b) => a - b);
+    const noiseMedian = pre[Math.floor(pre.length / 2)] || 0;
+    const noise = Math.max(noiseMedian, envMax * 1e-4, 1e-9);
+    const threshold = Math.min(envMax * 0.999, Math.max(noise * 4, envMax * Math.pow(10, opts.thresholdDb / 20)));
+    const sustain = Math.min(3, Math.max(1, Math.floor(W / 2)));
+    let k = -1;
+    for (let i = 0; i < n; i += 1) {
+      if (env[i] < threshold) continue;
+      let ok = true;
+      for (let j = 1; j < sustain; j += 1) {
+        if (i + j >= n || env[i + j] < threshold) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        k = i;
+        break;
+      }
+    }
+    const warnings = [];
+    let onsetIndex;
+    if (k < 0) {
+      warnings.push('Không tìm thấy onset rõ ràng; dùng peak làm fallback');
+      let p = 0;
+      let best = -1;
+      for (let i = 0; i < n; i += 1) {
+        const a = Math.abs(x[i]);
+        if (a > best) {
+          best = a;
+          p = i;
+        }
+      }
+      onsetIndex = p;
+    } else {
+      let envPos = k;
+      if (k > 0 && env[k - 1] < threshold && env[k] > env[k - 1]) {
+        const frac = (threshold - env[k - 1]) / (env[k] - env[k - 1]);
+        envPos = (k - 1) + clamp(frac, 0, 1);
+      }
+      if (k < h) {
+        onsetIndex = envPos;
+        warnings.push('Onset sát đầu file; độ chính xác giảm');
+      } else {
+        onsetIndex = envPos + h;
+      }
+    }
+    onsetIndex = clamp(onsetIndex, 0, n - 1);
+    const onsetMs = onsetIndex / fs * 1000;
+    let p = 0;
+    let peakAbs = -1;
+    for (let i = 0; i < n; i += 1) {
+      const a = Math.abs(x[i]);
+      if (a > peakAbs) {
+        peakAbs = a;
+        p = i;
+      }
+    }
+    let peakIndex = p;
+    if (p > 0 && p < n - 1) {
+      const y1 = Math.abs(x[p - 1]);
+      const y2 = Math.abs(x[p]);
+      const y3 = Math.abs(x[p + 1]);
+      const denom = y1 - 2 * y2 + y3;
+      if (Math.abs(denom) > 1e-14) {
+        const d = 0.5 * (y1 - y3) / denom;
+        peakIndex = p + clamp(d, -0.5, 0.5);
+      }
+    }
+    peakIndex = clamp(peakIndex, 0, n - 1);
+    const peakMs = peakIndex / fs * 1000;
+    const snrDb = 20 * Math.log10(Math.max(envMax, 1e-12) / Math.max(noise, 1e-12));
+    if (snrDb < 20) warnings.push('SNR thấp (' + snrDb.toFixed(1) + ' dB)');
+    if (peakMs - onsetMs > 10) warnings.push('Peak lệch onset > 10 ms');
+    if (onsetIndex <= 1) warnings.push('Onset sát đầu file');
+    if (onsetIndex >= n - 2) warnings.push('Onset sát cuối file');
+    return { signal: x, dcMean: mean, maxAbs, envMax, noise, snrDb, onsetIndex, onsetMs, peakIndex, peakMs, warnings };
+  }
+
+  function chosenMs(file) {
+    return state.method === 'onset' ? file.onsetMs : file.peakMs;
+  }
+
+  function chosenIndex(file) {
+    return state.method === 'onset' ? file.onsetIndex : file.peakIndex;
+  }
+
+  function getValid() {
+    return state.files.filter((f) => !f.error && Number.isFinite(f.onsetMs));
+  }
+
+  function getReference() {
+    return state.files.find((f) => f.id === state.referenceId && !f.error) || null;
+  }
+
+  function analyzeIR(ir) {
+    if (ir.error) return;
+    const opts = ir.isSub
+      ? { thresholdDb: state.subThresholdDb, smoothingMs: state.subSmoothingMs }
+      : state;
+    let samples = ir.samples;
+    let bpfLowHz = null;
+    let bpfHighHz = null;
+    if (state.systemMode === 'passive2' && !ir.isSub) {
+      const fc = clamp(Number(state.crossoverHz) || 3000, 200, 10000);
+      const low = fc / Math.SQRT2;
+      const high = Math.min(fc * Math.SQRT2, ir.sampleRate * 0.49);
+      if (fc < ir.sampleRate * 0.5 && low < high) {
+        samples = bandPassZeroPhase(ir.samples, ir.sampleRate, low, high);
+        bpfLowHz = low;
+        bpfHighHz = high;
+      }
+    }
+    try {
+      const res = analyzeSignal(samples, ir.sampleRate, opts);
+      ir.signal = res.signal;
+      ir.dcMean = res.dcMean;
+      ir.maxAbs = res.maxAbs;
+      ir.envMax = res.envMax;
+      ir.noise = res.noise;
+      ir.snrDb = res.snrDb;
+      ir.onsetIndex = res.onsetIndex;
+      ir.onsetMs = res.onsetMs;
+      ir.peakIndex = res.peakIndex;
+      ir.peakMs = res.peakMs;
+      ir.bpfLowHz = bpfLowHz;
+      ir.bpfHighHz = bpfHighHz;
+      ir.warnings = [...(ir.parseWarnings || []), ...res.warnings];
+      ir.error = null;
+    } catch (e) {
+      ir.error = e.message || String(e);
+      ir.signal = null;
+      ir.maxAbs = 0;
+      ir.onsetIndex = null;
+      ir.onsetMs = null;
+      ir.peakIndex = null;
+      ir.peakMs = null;
+      ir.bpfLowHz = null;
+      ir.bpfHighHz = null;
+      ir.warnings = [...(ir.parseWarnings || [])];
+    }
+  }
+
+  function ensureReference() {
+    const valid = getValid();
+    if (!valid.length) {
+      state.referenceId = null;
+      state.referenceAuto = true;
+      return;
+    }
+    if (state.referenceAuto || !valid.some((f) => f.id === state.referenceId)) {
+      let best = valid[0];
+      let bestT = chosenMs(best);
+      for (const f of valid) {
+        const t = chosenMs(f);
+        if (t > bestT) {
+          best = f;
+          bestT = t;
+        }
+      }
+      state.referenceId = best.id;
+      state.referenceAuto = true;
+    }
+  }
+
+  function lobeAt(signal, centerIndex, fs, maxAbs) {
+    const radius = Math.max(1, Math.round(0.005 * fs));
+    const c = clamp(Math.round(centerIndex), 0, signal.length - 1);
+    const a = Math.max(0, c - radius);
+    const b = Math.min(signal.length - 1, c + radius);
+    let bestAbs = -1;
+    let value = 0;
+    for (let i = a; i <= b; i += 1) {
+      const av = Math.abs(signal[i]);
+      if (av > bestAbs) {
+        bestAbs = av;
+        value = signal[i];
+      }
+    }
+    return {
+      sign: value > 0 ? 1 : value < 0 ? -1 : 0,
+      ratio: maxAbs > 0 ? Math.max(0, bestAbs) / maxAbs : 0
+    };
+  }
+
+  function computePolarity() {
+    const valid = getValid();
+    for (const f of valid) {
+      const lobe = lobeAt(f.signal, chosenIndex(f), f.sampleRate, f.maxAbs);
+      f.lobeSign = lobe.sign;
+      f.lobeRatio = lobe.ratio;
+    }
+    const ref = getReference();
+    for (const f of valid) {
+      if (!ref) {
+        f.polarity = 'uncertain';
+      } else if (f.id === ref.id) {
+        f.polarity = 'reference';
+      } else if (f.lobeRatio < 0.05 || ref.lobeRatio < 0.05 || f.lobeSign === 0 || ref.lobeSign === 0) {
+        f.polarity = 'uncertain';
+      } else {
+        f.polarity = f.lobeSign === ref.lobeSign ? 'same' : 'inverted';
+      }
+    }
+    for (const f of state.files) {
+      if (f.error) f.polarity = null;
+    }
+  }
+
+  function roundDsp(rawMs, fs, mode) {
+    const zero = rawMs < 1e-9 ? 0 : rawMs;
+    let ms = zero;
+    let cm = zero * SPEED_CM_PER_MS;
+    const samplesRaw = zero * fs / 1000;
+    let samples = Math.round(samplesRaw);
+    if (mode === 'ms001') {
+      ms = Math.round(zero / 0.01) * 0.01;
+      cm = ms * SPEED_CM_PER_MS;
+      samples = Math.round(ms * fs / 1000);
+    } else if (mode === 'ms002') {
+      ms = Math.round(zero / 0.02) * 0.02;
+      cm = ms * SPEED_CM_PER_MS;
+      samples = Math.round(ms * fs / 1000);
+    } else if (mode === 'ms01') {
+      ms = Math.round(zero / 0.1) * 0.1;
+      cm = ms * SPEED_CM_PER_MS;
+      samples = Math.round(ms * fs / 1000);
+    } else if (mode === 'cm') {
+      cm = Math.round(zero * SPEED_CM_PER_MS);
+      ms = cm / SPEED_CM_PER_MS;
+      samples = Math.round(ms * fs / 1000);
+    } else if (mode === 'sample') {
+      samples = Math.round(samplesRaw);
+      ms = samples * 1000 / fs;
+      cm = ms * SPEED_CM_PER_MS;
+    }
+    return { ms: Math.max(0, ms), cm: Math.max(0, cm), samples: Math.max(0, samples) };
+  }
+
+  function buildRows() {
+    const valid = getValid();
+    if (!valid.length) return { rows: [], tMax: null, tMin: null, ref: null, spread: 0 };
+    const ref = getReference();
+    let tMax = -Infinity;
+    let tMin = Infinity;
+    for (const f of valid) {
+      const t = chosenMs(f);
+      if (t > tMax) tMax = t;
+      if (t < tMin) tMin = t;
+    }
+    const refT = ref ? chosenMs(ref) : null;
+    const rows = valid.map((f) => {
+      const t = chosenMs(f);
+      const dspRaw = Math.max(0, tMax - t);
+      return {
+        file: f,
+        chosen: t,
+        deltaRef: refT == null ? null : t - refT,
+        dspRaw,
+        dsp: roundDsp(dspRaw, f.sampleRate, state.rounding),
+        isRef: ref ? f.id === ref.id : false,
+        isLatest: Math.abs(t - tMax) < 1e-9
+      };
+    });
+    return { rows, tMax, tMin, ref, spread: tMax - tMin };
+  }
+
+  function metaText(ir) {
+    if (!ir.sampleRate) return ir.size ? (ir.size / 1024).toFixed(1) + ' KB' : '';
+    const khz = ir.sampleRate / 1000;
+    const rate = Number.isInteger(khz) ? String(khz) : khz.toFixed(1);
+    const ch = ir.channels === 1 ? 'mono' : ir.channels + ' ch';
+    const bits = ir.bitsPerSample ? ir.bitsPerSample + '-bit ' + ir.formatName : '';
+    const dur = Number.isFinite(ir.duration) ? ir.duration.toFixed(3) + ' s' : '';
+    const bpf = ir.bpfLowHz && ir.bpfHighHz
+      ? 'BPF ' + (ir.bpfLowHz / 1000).toFixed(1) + '–' + (ir.bpfHighHz / 1000).toFixed(1) + ' kHz'
+      : '';
+    return [rate + ' kHz', ch, bits, dur, bpf].filter(Boolean).join(' · ');
+  }
+
+  function recompute() {
+    for (const ir of state.files) {
+      if (ir.samples) {
+        ir.error = null;
+        analyzeIR(ir);
+      }
+    }
+    ensureReference();
+    computePolarity();
+  }
+
+  function renderAll() {
+    const data = buildRows();
+    updateReferenceSelect();
+    renderSubDetected();
+    renderTable(data);
+    renderNotices(data);
+    renderSummary(data);
+    renderCharts(data);
+    updateButtons(data);
+  }
+
+  function renderSubDetected() {
+    const subs = state.files.filter((f) => f.isSub);
+    if (subs.length) {
+      els.subDetected.textContent = 'Sub: ' + subs.map((f) => f.name).join(', ');
+      els.subDetected.classList.add('found');
+    } else {
+      els.subDetected.textContent = 'Chưa nhận diện sub — đặt tên file có "sub", "subwoofer" hoặc "lfe".';
+      els.subDetected.classList.remove('found');
+    }
+  }
+
+  function updateReferenceSelect() {
+    const valid = getValid();
+    if (!valid.length) {
+      if (els.reference.dataset.ids !== '__empty__') {
+        els.reference.textContent = '';
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'Chưa có file';
+        els.reference.appendChild(opt);
+        els.reference.dataset.ids = '__empty__';
+      }
+      els.reference.disabled = true;
+      return;
+    }
+    const ids = valid.map((f) => f.id).join(',');
+    if (els.reference.dataset.ids !== ids) {
+      els.reference.textContent = '';
+      for (const f of valid) {
+        const opt = document.createElement('option');
+        opt.value = String(f.id);
+        opt.textContent = f.name;
+        els.reference.appendChild(opt);
+      }
+      els.reference.dataset.ids = ids;
+    }
+    if (state.referenceId != null && valid.some((f) => f.id === state.referenceId)) {
+      els.reference.value = String(state.referenceId);
+    }
+    els.reference.disabled = state.busy || valid.length === 0;
+  }
+
+  function renderTable(data) {
+    const map = new Map(data.rows.map((r) => [r.file.id, r]));
+    els.tbody.textContent = '';
+    if (!state.files.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 8;
+      td.className = 'muted';
+      td.textContent = 'Chưa có file. Kéo thả .wav để bắt đầu.';
+      tr.appendChild(td);
+      els.tbody.appendChild(tr);
+      return;
+    }
+    for (const ir of state.files) {
+      const tr = document.createElement('tr');
+      const row = map.get(ir.id);
+      if (ir.error) tr.classList.add('error-row');
+      if (row && row.isRef) tr.classList.add('ref');
+      if (row && row.isLatest) tr.classList.add('zero');
+
+      const fileTd = document.createElement('td');
+      const fileCell = createEl('div', 'file-cell');
+      const content = createEl('div', 'file-content');
+      const main = createEl('div', 'file-main');
+      main.appendChild(createEl('span', 'file-name', ir.name));
+      if (ir.isSub) main.appendChild(createEl('span', 'sub-badge', 'SUB'));
+      if (row && row.isRef) main.appendChild(createEl('span', 'ref-badge', 'REF'));
+      if (row && row.isLatest) main.appendChild(createEl('span', 'zero-badge', '0 ms'));
+      content.appendChild(main);
+      content.appendChild(createEl('div', 'file-meta', metaText(ir)));
+      if (ir.error) {
+        content.appendChild(createEl('div', 'file-warning error', ir.error));
+      } else {
+        const warnText = (ir.warnings || []).join('; ');
+        if (warnText) content.appendChild(createEl('div', 'file-warning', warnText));
+        else if (!row) content.appendChild(createEl('div', 'file-warning', 'Không có kết quả'));
+      }
+      const remove = createEl('button', 'remove', '×');
+      remove.type = 'button';
+      remove.title = 'Xóa file';
+      remove.setAttribute('aria-label', 'Xóa ' + ir.name);
+      remove.dataset.id = String(ir.id);
+      fileCell.appendChild(content);
+      fileCell.appendChild(remove);
+      fileTd.appendChild(fileCell);
+      tr.appendChild(fileTd);
+
+      if (ir.error || !row) {
+        for (let i = 0; i < 7; i += 1) tr.appendChild(createEl('td', '', '—'));
+      } else {
+        const onset = createEl('td', '', fmt(ir.onsetMs, 2));
+        onset.title = ir.onsetMs.toFixed(4) + ' ms · ' + Math.round(ir.onsetIndex) + ' samples';
+        tr.appendChild(onset);
+        const peak = createEl('td', '', fmt(ir.peakMs, 2));
+        peak.title = ir.peakMs.toFixed(4) + ' ms · ' + Math.round(ir.peakIndex) + ' samples';
+        tr.appendChild(peak);
+        const delta = createEl('td', '', fmtSigned(row.deltaRef, 2));
+        delta.title = 't_i − t_ref (âm = đến sớm hơn reference)';
+        tr.appendChild(delta);
+        const dms = createEl('td', '', fmt(row.dsp.ms, 2));
+        dms.title = 'raw: ' + row.dspRaw.toFixed(4) + ' ms';
+        tr.appendChild(dms);
+        const dcm = createEl('td', '', fmt(row.dsp.cm, 1));
+        dcm.title = 'raw: ' + (row.dspRaw * SPEED_CM_PER_MS).toFixed(2) + ' cm';
+        tr.appendChild(dcm);
+        const dsamp = createEl('td', '', String(Math.round(row.dsp.samples)));
+        dsamp.title = 'raw: ' + (row.dspRaw * ir.sampleRate / 1000).toFixed(2) + ' samples';
+        tr.appendChild(dsamp);
+        const pol = document.createElement('td');
+        const polMap = {
+          reference: ['ref', 'Reference'],
+          same: ['same', 'Same'],
+          inverted: ['inv', 'Inverted'],
+          uncertain: ['unc', 'Uncertain']
+        };
+        const p = polMap[ir.polarity] || ['unc', 'Uncertain'];
+        const pill = createEl('span', 'pill ' + p[0], p[1]);
+        pill.title = 'Polarity tương đối so với reference; chỉ mang tính tham khảo';
+        pol.appendChild(pill);
+        tr.appendChild(pol);
+      }
+      els.tbody.appendChild(tr);
+    }
+  }
+
+  function renderNotices(data) {
+    const valid = getValid();
+    const notices = [];
+    const errors = state.files.filter((f) => f.error);
+    if (!state.files.length) {
+      notices.push({ type: 'info', text: 'Kéo thả file .wav để bắt đầu. Tool sẽ tự phân tích delay tương đối.' });
+    }
+    if (errors.length) {
+      notices.push({ type: 'err', text: errors.length + ' file không đọc được. Xem chi tiết trong bảng.' });
+    }
+    if (valid.length === 1) {
+      notices.push({ type: 'info', text: 'Chỉ có 1 file; cần ít nhất 2 file để tính delay tương đối.' });
+    }
+    if (valid.length >= 2) {
+      const maxFs = Math.max(...valid.map((f) => f.sampleRate));
+      const tol = 1000 / maxFs;
+      if (data.spread <= tol) {
+        notices.push({
+          type: 'warn',
+          text: 'Tất cả ' + methodLabel() + ' trùng nhau (±' + tol.toFixed(3) + ' ms). HouseCurve có thể đã chuẩn hóa time-zero; không thể suy ra delay tương đối từ bộ file này.'
+        });
+      }
+      const lowSnr = valid.filter((f) => f.snrDb < 20);
+      if (lowSnr.length) {
+        notices.push({
+          type: 'warn',
+          text: lowSnr.length + ' file có SNR thấp (< 20 dB). Kết quả có thể không ổn định; nên đo lại hoặc tăng ngưỡng onset.'
+        });
+      }
+      const refRow = data.rows.find((r) => r.isRef);
+      if (refRow && !refRow.isLatest) {
+        notices.push({
+          type: 'info',
+          text: 'Reference không phải loa đến muộn nhất. Cột Delay vs ref dùng mốc này; cột DSP delay vẫn chuẩn hóa theo loa muộn nhất (delay ≥ 0).'
+        });
+      }
+      if (data.rows.every((r) => r.dsp.ms < 0.0005)) {
+        notices.push({ type: 'info', text: 'Các loa đến cùng thời điểm; delay cần thêm = 0.' });
+      }
+    }
+    els.notices.textContent = '';
+    if (!notices.length) {
+      els.notices.hidden = true;
+      return;
+    }
+    els.notices.hidden = false;
+    for (const n of notices) {
+      els.notices.appendChild(createEl('div', 'notice ' + n.type, n.text));
+    }
+  }
+
+  function renderSummary(data) {
+    if (!state.files.length) {
+      els.summary.textContent = 'Chưa có dữ liệu';
+      return;
+    }
+    const valid = getValid();
+    if (!valid.length) {
+      els.summary.textContent = state.files.length + ' file · không có file hợp lệ';
+      return;
+    }
+    const rates = [...new Set(valid.map((f) => Math.round(f.sampleRate)))];
+    const rateText = rates.length === 1 ? rates[0] / 1000 + ' kHz' : 'nhiều sample rate';
+    const spreadText = valid.length > 1 ? ' · spread ' + data.spread.toFixed(2) + ' ms' : '';
+    els.summary.textContent = valid.length + ' file · ' + rateText + ' · ref: ' + (data.ref ? data.ref.name : '—') + ' · ' + methodLabel() + spreadText;
+  }
+
+  function updateButtons(data) {
+    const hasFiles = state.files.length > 0;
+    const hasValid = data && data.rows.length > 0;
+    els.clear.disabled = !hasFiles || state.busy;
+    els.copy.disabled = !hasValid || state.busy;
+    els.export.disabled = !hasValid || state.busy;
+    els.reference.disabled = state.busy || getValid().length === 0;
+    els.dropzone.classList.toggle('busy', state.busy);
+  }
+
+  function setBusy(flag, text) {
+    state.busy = flag;
+    els.status.textContent = text || '';
+    updateButtons(buildRows());
+  }
+
+  async function handleFiles(fileList) {
+    if (state.busy) {
+      showToast('Đang xử lý file khác, vui lòng chờ.', 'err');
+      return;
+    }
+    const incoming = Array.from(fileList || []);
+    const wavFiles = incoming.filter((f) => /\.wav$/i.test(f.name) || /wav/i.test(f.type || ''));
+    const rejected = incoming.length - wavFiles.length;
+    if (!wavFiles.length) {
+      showToast('Chỉ hỗ trợ file .wav', 'err');
+      return;
+    }
+    const accepted = [];
+    let duplicates = 0;
+    for (const f of wavFiles) {
+      const dup = state.files.some((x) => x.name === f.name && x.size === f.size && x.lastModified === f.lastModified);
+      if (dup) duplicates += 1;
+      else accepted.push(f);
+    }
+    if (!accepted.length) {
+      showToast('Các file này đã có trong danh sách.', 'err');
+      return;
+    }
+    setBusy(true, 'Đang đọc 0/' + accepted.length + ' file...');
+    let done = 0;
+    for (const f of accepted) {
+      try {
+        const buf = await f.arrayBuffer();
+        const parsed = parseWav(buf);
+        state.files.push({
+          id: nextId++,
+          name: f.name,
+          size: f.size,
+          lastModified: f.lastModified,
+          ...parsed,
+          isSub: isSubwooferName(f.name),
+          parseWarnings: parsed.warnings || [],
+          warnings: [],
+          error: null
+        });
+      } catch (e) {
+        state.files.push({
+          id: nextId++,
+          name: f.name,
+          size: f.size,
+          lastModified: f.lastModified,
+          isSub: isSubwooferName(f.name),
+          error: e.message || String(e),
+          warnings: [],
+          parseWarnings: []
+        });
+      }
+      done += 1;
+      els.status.textContent = 'Đang đọc ' + done + '/' + accepted.length + ' file...';
+    }
+    setBusy(false, '');
+    recompute();
+    renderAll();
+    if (duplicates) showToast(duplicates + ' file trùng đã bỏ qua.', 'info');
+    if (rejected) showToast(rejected + ' file không phải .wav đã bỏ qua.', 'info');
+    if (state.files.some((f) => f.error)) showToast('Một số file không đọc được. Xem chi tiết trong bảng.', 'err');
+  }
+
+  function clearAll() {
+    state.files = [];
+    state.referenceId = null;
+    state.referenceAuto = true;
+    els.fileInput.value = '';
+    els.status.textContent = '';
+    renderAll();
+  }
+
+  function removeFile(id) {
+    const idx = state.files.findIndex((f) => f.id === id);
+    if (idx < 0) return;
+    const removed = state.files[idx];
+    state.files.splice(idx, 1);
+    if (removed.id === state.referenceId) state.referenceAuto = true;
+    recompute();
+    renderAll();
+  }
+
+  async function copyTSV(data) {
+    if (!data.rows.length) return;
+    const lines = ['File\tDSP delay (ms)\tDSP delay (cm)\tDSP delay (samples)'];
+    for (const r of data.rows) {
+      lines.push([
+        r.file.name,
+        r.dsp.ms.toFixed(2),
+        r.dsp.cm.toFixed(1),
+        String(Math.round(r.dsp.samples))
+      ].join('\t'));
+    }
+    const text = lines.join('\n');
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        if (!ok) throw new Error('copy failed');
+      }
+      showToast('Đã copy TSV.', 'info');
+    } catch (e) {
+      showToast('Không copy được. Hãy dùng Export CSV.', 'err');
+    }
+  }
+
+  function exportCSV(data) {
+    if (!data.rows.length) return;
+    const refName = data.ref ? data.ref.name : '';
+    const header = ['file', 'onset_ms', 'peak_ms', 'ref', 'delta_vs_ref_ms', 'dsp_delay_ms', 'dsp_delay_cm', 'dsp_delay_samples', 'polarity', 'warning'];
+    const lines = [header.join(',')];
+    for (const r of data.rows) {
+      const f = r.file;
+      const values = [
+        f.name,
+        f.onsetMs.toFixed(2),
+        f.peakMs.toFixed(2),
+        refName,
+        r.deltaRef == null ? '' : r.deltaRef.toFixed(2),
+        r.dsp.ms.toFixed(2),
+        r.dsp.cm.toFixed(1),
+        String(Math.round(r.dsp.samples)),
+        f.polarity || '',
+        (f.warnings || []).join('; ')
+      ];
+      lines.push(values.map(escapeCsv).join(','));
+    }
+    const csv = '\uFEFF' + lines.join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'time-align-' + timestamp() + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('Đã export CSV.', 'info');
+  }
+
+  function fitCanvas(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const w = Math.max(240, Math.round(rect.width));
+    const h = Math.max(120, Math.round(rect.height));
+    const bw = Math.round(w * dpr);
+    const bh = Math.round(h * dpr);
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w, h };
+  }
+
+  function drawEmptyChart(ctx, w, h, text) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0d1620';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#6f8497';
+    ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, w / 2, h / 2);
+  }
+
+  function renderCharts(data) {
+    renderChartIR(data);
+    renderChartTimeline(data);
+  }
+
+  function renderChartIR(data) {
+    const method = methodLabel().toLowerCase();
+    els.chartIrTitle.textContent = 'Impulse response (aligned theo ' + method + ')';
+    const { ctx, w, h } = fitCanvas(els.chartIr);
+    const rows = data.rows;
+    if (!rows.length) {
+      drawEmptyChart(ctx, w, h, 'Chưa có dữ liệu');
+      els.legendIr.textContent = '';
+      return;
+    }
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0d1620';
+    ctx.fillRect(0, 0, w, h);
+    const m = { left: 46, right: 16, top: 16, bottom: 30 };
+    const pw = Math.max(10, w - m.left - m.right);
+    const ph = Math.max(10, h - m.top - m.bottom);
+    const xMin = -2;
+    const xMax = 20;
+    const mid = m.top + ph / 2;
+    const amp = ph * 0.44;
+    const mapX = (ms) => m.left + (ms - xMin) / (xMax - xMin) * pw;
+    ctx.font = CHART_FONT;
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let ms = -2; ms <= 20; ms += 2) {
+      const x = mapX(ms);
+      ctx.beginPath();
+      ctx.moveTo(x, m.top);
+      ctx.lineTo(x, m.top + ph);
+      ctx.stroke();
+    }
+    const yTicks = [-1, -0.5, 0, 0.5, 1];
+    for (const v of yTicks) {
+      const y = mid - v * amp;
+      ctx.beginPath();
+      ctx.moveTo(m.left, y);
+      ctx.lineTo(m.left + pw, y);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath();
+    ctx.moveTo(m.left, mid);
+    ctx.lineTo(m.left + pw, mid);
+    ctx.stroke();
+    ctx.fillStyle = '#8fa3b6';
+    ctx.textAlign = 'center';
+    for (const ms of [-2, 0, 5, 10, 15, 20]) {
+      ctx.fillText(String(ms), mapX(ms), m.top + ph + 16);
+    }
+    ctx.textAlign = 'right';
+    for (const v of yTicks) {
+      ctx.fillText(v.toFixed(1), m.left - 6, mid - v * amp);
+    }
+    ctx.fillStyle = '#8fa3b6';
+    ctx.fillText('ms từ ' + method, w - m.right, h - 4);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(m.left, m.top, pw, ph);
+    ctx.clip();
+    rows.forEach((row) => {
+      const f = row.file;
+      if (!f.signal || !(f.maxAbs > 0)) return;
+      const fs = f.sampleRate;
+      const center = state.method === 'onset' ? f.onsetIndex : f.peakIndex;
+      const i0 = Math.max(0, Math.floor(center - 0.002 * fs));
+      const i1 = Math.min(f.signal.length - 1, Math.ceil(center + 0.020 * fs));
+      if (i1 <= i0) return;
+      const step = Math.max(1, Math.floor((i1 - i0) / 4000));
+      const color = colorFor(f);
+      ctx.beginPath();
+      let first = true;
+      for (let j = i0; j <= i1; j += step) {
+        const ms = (j - center) / fs * 1000;
+        const x = mapX(ms);
+        const y = mid - (f.signal[j] / f.maxAbs) * amp;
+        if (first) {
+          ctx.moveTo(x, y);
+          first = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      if ((i1 - i0) % step !== 0) {
+        const ms = (i1 - center) / fs * 1000;
+        ctx.lineTo(mapX(ms), mid - (f.signal[i1] / f.maxAbs) * amp);
+      }
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.4;
+      ctx.globalAlpha = 0.9;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      const peakMs = (f.peakIndex - center) / fs * 1000;
+      if (peakMs >= xMin && peakMs <= xMax) {
+        const pi = clamp(Math.round(f.peakIndex), 0, f.signal.length - 1);
+        const px = mapX(peakMs);
+        const py = mid - (f.signal[pi] / f.maxAbs) * amp;
+        ctx.beginPath();
+        ctx.arc(px, py, 3.4, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = '#0d1620';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+    const zeroX = mapX(0);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(76,201,240,0.55)';
+    ctx.beginPath();
+    ctx.moveTo(zeroX, m.top);
+    ctx.lineTo(zeroX, m.top + ph);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    els.legendIr.textContent = '';
+    rows.forEach((row) => {
+      const item = createEl('span', 'legend-item');
+      const sw = createEl('span', 'swatch');
+      sw.style.background = colorFor(row.file);
+      item.appendChild(sw);
+      item.appendChild(createEl('span', '', row.file.name));
+      els.legendIr.appendChild(item);
+    });
+  }
+
+  function truncateCanvasText(ctx, text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let s = text;
+    while (s.length > 1 && ctx.measureText(s + '…').width > maxWidth) s = s.slice(0, -1);
+    return s + '…';
+  }
+
+  function renderChartTimeline(data) {
+    els.chartTimelineTitle.textContent = 'Thời gian đến tương đối (' + methodLabel() + ') & delay cần thêm';
+    const { ctx, w, h } = fitCanvas(els.chartTimeline);
+    const rows = data.rows.slice().sort((a, b) => a.chosen - b.chosen || a.file.name.localeCompare(b.file.name));
+    if (!rows.length) {
+      drawEmptyChart(ctx, w, h, 'Chưa có dữ liệu');
+      return;
+    }
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#0d1620';
+    ctx.fillRect(0, 0, w, h);
+    const minT = rows[0].chosen;
+    const maxT = data.tMax;
+    const spread = Math.max(0, maxT - minT);
+    const axisMax = spread > 0.0005 ? spread * 1.16 : 0.02;
+    const m = {
+      left: Math.min(150, Math.max(78, Math.round(w * 0.22))),
+      right: Math.min(120, Math.max(78, Math.round(w * 0.2))),
+      top: 22,
+      bottom: 32
+    };
+    const pw = Math.max(10, w - m.left - m.right);
+    const ph = Math.max(10, h - m.top - m.bottom);
+    const mapX = (t) => m.left + (t - minT) / axisMax * pw;
+    const rowH = ph / Math.max(1, rows.length);
+    const axisDigits = axisMax < 0.1 ? 3 : 2;
+    ctx.font = CHART_FONT;
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i += 1) {
+      const t = axisMax * i / 4;
+      const x = mapX(minT + t);
+      ctx.beginPath();
+      ctx.moveTo(x, m.top);
+      ctx.lineTo(x, m.top + ph);
+      ctx.stroke();
+      ctx.fillStyle = '#8fa3b6';
+      ctx.textAlign = 'center';
+      ctx.fillText(t.toFixed(axisDigits), x, m.top + ph + 16);
+    }
+    const targetX = mapX(maxT);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(144,190,109,0.6)';
+    ctx.beginPath();
+    ctx.moveTo(targetX, m.top);
+    ctx.lineTo(targetX, m.top + ph);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8fa3b6';
+    ctx.textAlign = 'center';
+    const targetLabelX = clamp(targetX, m.left + 34, m.left + pw - 34);
+    ctx.fillText('loa muộn nhất', targetLabelX, m.top - 8);
+    rows.forEach((row, index) => {
+      const y = m.top + (index + 0.5) * rowH;
+      const color = colorFor(row.file);
+      ctx.fillStyle = '#c8d6e2';
+      ctx.textAlign = 'right';
+      ctx.font = CHART_FONT;
+      ctx.fillText(truncateCanvasText(ctx, row.file.name, m.left - 12), m.left - 8, y);
+      const x0 = mapX(row.chosen);
+      const x1 = targetX;
+      const barH = Math.max(3, Math.min(12, rowH * 0.36));
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(x0, y - barH / 2, Math.max(1, x1 - x0), barH);
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.arc(x0, y, 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.fillStyle = '#dbe7f0';
+      ctx.textAlign = 'right';
+      ctx.font = CHART_FONT;
+      ctx.fillText('+' + row.dsp.ms.toFixed(2) + ' ms', w - 8, y);
+    });
+    ctx.fillStyle = '#8fa3b6';
+    ctx.textAlign = 'center';
+    ctx.fillText('ms tương đối (0 = loa đến sớm nhất)', m.left + pw / 2, h - 4);
+    if (spread < 0.0005) {
+      ctx.fillStyle = 'rgba(249,199,79,0.9)';
+      ctx.textAlign = 'center';
+      ctx.fillText('spread 0 ms', m.left + pw / 2, m.top + 10);
+    }
+  }
+
+  function lcgFactory(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  function synthIR(timeMs, amp, fs) {
+    const n = Math.round(fs * 0.1);
+    const x = new Float32Array(n);
+    const rnd = lcgFactory(0x12345678);
+    for (let i = 0; i < n; i += 1) x[i] = (rnd() - 0.5) * 1e-5;
+    const add = (t, a) => {
+      const p = Math.round(fs * t / 1000);
+      if (p >= 0 && p < n) x[p] += a;
+    };
+    add(timeMs, amp);
+    add(timeMs + 2.5, amp * 0.3);
+    add(timeMs + 6, amp * 0.15);
+    return x;
+  }
+
+  function buildTestWav16(fs, samples) {
+    const n = samples.length;
+    const dataSize = n * 2;
+    const buf = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buf);
+    const bytes = new Uint8Array(buf);
+    writeAscii(bytes, 0, 'RIFF');
+    view.setUint32(4, 36 + dataSize, true);
+    writeAscii(bytes, 8, 'WAVE');
+    writeAscii(bytes, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, fs, true);
+    view.setUint32(28, fs * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeAscii(bytes, 36, 'data');
+    view.setUint32(40, dataSize, true);
+    for (let i = 0; i < n; i += 1) {
+      const v = clamp(samples[i], -1, 1);
+      view.setInt16(44 + i * 2, Math.round(v * 32767), true);
+    }
+    return buf;
+  }
+
+  function buildTestWavFloat32Junk(fs, samples) {
+    const n = samples.length;
+    const dataSize = n * 4;
+    const buf = new ArrayBuffer(80 + dataSize);
+    const view = new DataView(buf);
+    const bytes = new Uint8Array(buf);
+    writeAscii(bytes, 0, 'RIFF');
+    view.setUint32(4, 72 + dataSize, true);
+    writeAscii(bytes, 8, 'WAVE');
+    writeAscii(bytes, 12, 'JUNK');
+    view.setUint32(16, 28, true);
+    for (let i = 20; i < 48; i += 1) bytes[i] = 0;
+    writeAscii(bytes, 48, 'fmt ');
+    view.setUint32(52, 16, true);
+    view.setUint16(56, 3, true);
+    view.setUint16(58, 1, true);
+    view.setUint32(60, fs, true);
+    view.setUint32(64, fs * 4, true);
+    view.setUint16(68, 4, true);
+    view.setUint16(70, 32, true);
+    writeAscii(bytes, 72, 'data');
+    view.setUint32(76, dataSize, true);
+    for (let i = 0; i < n; i += 1) view.setFloat32(80 + i * 4, samples[i], true);
+    return buf;
+  }
+
+  function runSelfTest() {
+    const results = [];
+    const add = (label, pass, detail) => results.push({ label, pass: !!pass, detail: detail || '' });
+    try {
+      const fs = 48000;
+      const opts = { thresholdDb: -20, smoothingMs: 0.5 };
+      const a = synthIR(10, 1, fs);
+      const b = synthIR(12, 1, fs);
+      const c = synthIR(11, -1, fs);
+      const ra = analyzeSignal(a, fs, opts);
+      const rb = analyzeSignal(b, fs, opts);
+      const rc = analyzeSignal(c, fs, opts);
+      const tol = 1000 / fs;
+      add('Onset A ≈ 10 ms', Math.abs(ra.onsetMs - 10) <= tol, ra.onsetMs.toFixed(4) + ' ms');
+      add('Onset B ≈ 12 ms', Math.abs(rb.onsetMs - 12) <= tol, rb.onsetMs.toFixed(4) + ' ms');
+      add('Onset C ≈ 11 ms', Math.abs(rc.onsetMs - 11) <= tol, rc.onsetMs.toFixed(4) + ' ms');
+      add('Peak A ≈ 10 ms', Math.abs(ra.peakMs - 10) <= tol, ra.peakMs.toFixed(4) + ' ms');
+      add('Peak B ≈ 12 ms', Math.abs(rb.peakMs - 12) <= tol, rb.peakMs.toFixed(4) + ' ms');
+      add('Polarity A dương', ra.signal[Math.round(ra.peakIndex)] > 0, '');
+      add('Polarity C âm', rc.signal[Math.round(rc.peakIndex)] < 0, '');
+      const tMax = Math.max(ra.onsetMs, rb.onsetMs, rc.onsetMs);
+      add('DSP delay A ≈ 2 ms', Math.abs((tMax - ra.onsetMs) - 2) <= tol, (tMax - ra.onsetMs).toFixed(4) + ' ms');
+      add('DSP delay B = 0 ms', Math.abs(tMax - rb.onsetMs) <= tol, (tMax - rb.onsetMs).toFixed(4) + ' ms');
+      add('DSP delay C ≈ 1 ms', Math.abs((tMax - rc.onsetMs) - 1) <= tol, (tMax - rc.onsetMs).toFixed(4) + ' ms');
+      const wav16 = buildTestWav16(fs, a);
+      const p16 = parseWav(wav16);
+      add('Parser PCM16 sample rate', p16.sampleRate === fs, String(p16.sampleRate));
+      add('Parser PCM16 mono', p16.channels === 1, p16.channels + ' ch');
+      add('Parser PCM16 length', p16.samples.length === a.length, String(p16.samples.length));
+      const idx = Math.round(fs * 0.01);
+      add('Parser PCM16 sample', Math.abs(p16.samples[idx] - a[idx]) < 1e-3, p16.samples[idx].toFixed(5) + ' vs ' + a[idx].toFixed(5));
+      const wavF = buildTestWavFloat32Junk(fs, a);
+      const pf = parseWav(wavF);
+      add('Parser float32/JUNK sample rate', pf.sampleRate === fs, String(pf.sampleRate));
+      add('Parser float32/JUNK format', pf.formatCode === 3 && pf.bitsPerSample === 32, pf.formatCode + '/' + pf.bitsPerSample);
+      add('Parser float32/JUNK sample', Math.abs(pf.samples[idx] - a[idx]) < 1e-6, pf.samples[idx].toFixed(6) + ' vs ' + a[idx].toFixed(6));
+    } catch (e) {
+      add('Self-test exception', false, e.message || String(e));
+    }
+    const passed = results.filter((r) => r.pass).length;
+    const total = results.length;
+    results.unshift({ label: 'Tổng: ' + passed + '/' + total + ' PASS', pass: passed === total, detail: '' });
+    els.selftestOutput.textContent = '';
+    for (const r of results) {
+      const line = document.createElement('div');
+      line.className = r.pass ? 'pass' : 'fail';
+      line.textContent = (r.pass ? 'PASS' : 'FAIL') + '  ' + r.label + (r.detail ? ' — ' + r.detail : '');
+      els.selftestOutput.appendChild(line);
+    }
+    els.selftestPanel.hidden = false;
+    els.selftestPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function scheduleRecompute() {
+    clearTimeout(recomputeTimer);
+    recomputeTimer = setTimeout(() => {
+      recompute();
+      renderAll();
+    }, 120);
+  }
+
+  function init() {
+    els.dropzone.addEventListener('click', () => {
+      if (!state.busy) els.fileInput.click();
+    });
+    els.dropzone.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !state.busy) {
+        e.preventDefault();
+        els.fileInput.click();
+      }
+    });
+    els.dropzone.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      els.dropzone.classList.add('drag');
+    });
+    els.dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      els.dropzone.classList.add('drag');
+    });
+    els.dropzone.addEventListener('dragleave', (e) => {
+      if (e.relatedTarget && els.dropzone.contains(e.relatedTarget)) return;
+      els.dropzone.classList.remove('drag');
+    });
+    els.dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      els.dropzone.classList.remove('drag');
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+    window.addEventListener('dragover', (e) => e.preventDefault());
+    window.addEventListener('drop', (e) => e.preventDefault());
+    els.fileInput.addEventListener('change', () => {
+      handleFiles(els.fileInput.files);
+      els.fileInput.value = '';
+    });
+    els.reference.addEventListener('change', () => {
+      state.referenceId = Number(els.reference.value);
+      state.referenceAuto = false;
+      computePolarity();
+      renderAll();
+    });
+    els.method.addEventListener('change', () => {
+      state.method = els.method.value;
+      ensureReference();
+      computePolarity();
+      renderAll();
+    });
+    els.threshold.addEventListener('input', () => {
+      state.thresholdDb = Number(els.threshold.value);
+      els.thresholdValue.textContent = state.thresholdDb + ' dB';
+      scheduleRecompute();
+    });
+    els.smoothing.addEventListener('input', () => {
+      state.smoothingMs = Number(els.smoothing.value);
+      els.smoothingValue.textContent = state.smoothingMs.toFixed(1) + ' ms';
+      scheduleRecompute();
+    });
+    els.subThreshold.addEventListener('input', () => {
+      state.subThresholdDb = Number(els.subThreshold.value);
+      els.subThresholdValue.textContent = state.subThresholdDb + ' dB';
+      scheduleRecompute();
+    });
+    els.subSmoothing.addEventListener('input', () => {
+      state.subSmoothingMs = Number(els.subSmoothing.value);
+      els.subSmoothingValue.textContent = state.subSmoothingMs.toFixed(1) + ' ms';
+      scheduleRecompute();
+    });
+    els.systemMode.addEventListener('change', () => {
+      state.systemMode = els.systemMode.value;
+      els.crossoverFreq.disabled = state.systemMode !== 'passive2';
+      els.systemHint.textContent = state.systemMode === 'passive2'
+        ? '2-way passive: band-pass speaker zero-phase quanh crossover (Fc/√2–Fc×√2) trước khi tìm onset; sub không bị lọc.'
+        : 'Active: dùng IR gốc.';
+      scheduleRecompute();
+    });
+    els.crossoverFreq.addEventListener('input', () => {
+      const value = Number(els.crossoverFreq.value);
+      if (!Number.isFinite(value) || value <= 0) return;
+      state.crossoverHz = clamp(value, 200, 10000);
+      scheduleRecompute();
+    });
+    els.rounding.addEventListener('change', () => {
+      state.rounding = els.rounding.value;
+      renderAll();
+    });
+    els.clear.addEventListener('click', clearAll);
+    els.copy.addEventListener('click', () => copyTSV(buildRows()));
+    els.export.addEventListener('click', () => exportCSV(buildRows()));
+    els.selftest.addEventListener('click', runSelfTest);
+    els.tbody.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (state.busy) return;
+      const btn = target.closest('button.remove');
+      if (!btn) return;
+      removeFile(Number(btn.dataset.id));
+    });
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => renderCharts(buildRows()), 150);
+    });
+    els.thresholdValue.textContent = state.thresholdDb + ' dB';
+    els.smoothingValue.textContent = state.smoothingMs.toFixed(1) + ' ms';
+    els.subThresholdValue.textContent = state.subThresholdDb + ' dB';
+    els.subSmoothingValue.textContent = state.subSmoothingMs.toFixed(1) + ' ms';
+    els.systemMode.value = state.systemMode;
+    els.crossoverFreq.value = String(state.crossoverHz);
+    els.crossoverFreq.disabled = state.systemMode !== 'passive2';
+    els.systemHint.textContent = state.systemMode === 'passive2'
+      ? '2-way passive: band-pass speaker zero-phase quanh crossover (Fc/√2–Fc×√2) trước khi tìm onset; sub không bị lọc.'
+      : 'Active: dùng IR gốc.';
+    renderAll();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
